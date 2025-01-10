@@ -1,0 +1,82 @@
+# On demand: package and upload the Helm chart
+#
+# This is a manually triggered workflow to package and upload the Helm chart
+# from the specified Git revision (e.g., main branch or v0.7.0 tag) to Helm
+# repository on https://github.com/aquasecurity/helm-charts.
+#
+name: Publish Helm
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: The branch, tag or SHA to publish, e.g. v0.0.1
+        required: true
+env:
+  HELM_REP: helm-charts
+  GH_OWNER: aquasecurity
+  CHART_DIR: deploy/helm/tracee
+  KIND_VERSION: "v0.14.0"
+  KIND_IMAGE: "kindest/node:v1.23.6@sha256:b1fa224cc6c7ff32455e0b1fd9cbfd3d3bc87ecaa8fcb06961ed1afb3db0f9ae"
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          ref: ${{ github.event.inputs.ref }}
+          fetch-depth: 0
+      - name: Install Helm
+        uses: azure/setup-helm@b7246b12e77f7134dc2d460a3d5bad15bbe29390 # v4.1.0
+        with:
+          version: v3.14.3
+      - name: Set up python
+        uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d # v5.1.0
+        with:
+          python-version: 3.12.3
+      - name: Set up aqua charts
+        run: |
+          helm repo add aqua https://aquasecurity.github.io/helm-charts
+      - name: Setup Chart Linting
+        id: lint
+        uses: helm/chart-testing-action@e6669bcd63d7cb57cb4380c33043eebe5d111992 # v2.6.1
+      - name: Setup Kubernetes cluster (KIND)
+        uses: helm/kind-action@99576bfa6ddf9a8e612d83b513da5a75875caced # v1.9.0
+        with:
+          version: ${{ env.KIND_VERSION }}
+          node_image: ${{ env.KIND_IMAGE }}
+      - name: Run chart-testing
+        run: ct lint-and-install --validate-maintainers=false --charts ${{ env.CHART_DIR }}
+      - name: Install chart-releaser
+        run: |
+          wget https://github.com/helm/chart-releaser/releases/download/v1.3.0/chart-releaser_1.3.0_linux_amd64.tar.gz
+          echo "baed2315a9bb799efb71d512c5198a2a3b8dcd139d7f22f878777cffcd649a37  chart-releaser_1.3.0_linux_amd64.tar.gz" | sha256sum -c -
+          tar xzvf chart-releaser_1.3.0_linux_amd64.tar.gz cr
+      - name: Package helm chart
+        run: |
+          ./cr package --package-path .cr-release-packages ${{ env.CHART_DIR }}
+      - name: Upload helm chart
+        # Failed with upload the same version: https://github.com/helm/chart-releaser/issues/101
+        continue-on-error: true
+        run: |
+          ./cr upload --owner ${{ env.GH_OWNER }} \
+            --git-repo ${{ env.HELM_REP }} \
+            --package-path .cr-release-packages \
+            --token ${{ secrets.ORG_REPO_TOKEN }}
+      - name: Index helm chart
+        run: |
+          ./cr index --owner ${{ env.GH_OWNER }} \
+            --git-repo ${{ env.HELM_REP }} \
+            --charts-repo https://${{ env.GH_OWNER }}.github.io/${{ env.HELM_REP }}/ \
+            --index-path index.yaml
+      - name: Push index file
+        uses: dmnemec/copy_file_to_another_repo_action@c93037aa10fa8893de271f19978c980d0c1a9b37 # v1.1.1
+        env:
+          API_TOKEN_GITHUB: ${{ secrets.ORG_REPO_TOKEN }}
+        with:
+          source_file: "index.yaml"
+          destination_repo: "${{ env.GH_OWNER }}/${{ env.HELM_REP }}"
+          destination_folder: "."
+          destination_branch: "gh-pages"
+          user_email: aqua-bot@users.noreply.github.com
+          user_name: "aqua-bot"
