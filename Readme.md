@@ -1,57 +1,61 @@
 ![Tracee Logo](docs/images/tracee.png)
 
-[![GitHub release (latest by date)](https://img.shields.io/github/v/release/aquasecurity/tracee)](https://github.com/aquasecurity/tracee/releases)
-[![Go Report Card](https://goreportcard.com/badge/github.com/aquasecurity/tracee)](https://goreportcard.com/report/github.com/aquasecurity/tracee)
-[![License](https://img.shields.io/github/license/aquasecurity/tracee)](https://github.com/aquasecurity/tracee/blob/main/LICENSE)
-[![docker](https://badgen.net/docker/pulls/aquasec/tracee)](https://hub.docker.com/r/aquasec/tracee)
+<!-- links that differ between docs and readme -->
+[installation]:https://aquasecurity.github.io/tracee/latest/docs/install/
+[docker-guide]:https://aquasecurity.github.io/tracee/latest/docs/install/docker/
+[kubernetes-guide]:https://aquasecurity.github.io/tracee/latest/docs/install/kubernetes/
+[prereqs]:https://aquasecurity.github.io/tracee/latest/docs/install/prerequisites/
+[macfaq]:https://aquasecurity.github.io/tracee/latest/docs/advanced/mac/
 
-# Tracee: Runtime Security and Forensics using eBPF
+Before moving on, please consider giving us a GitHub star ⭐️. Thank you!
 
-Tracee is a Runtime Security and forensics tool for Linux. It is using Linux eBPF technology to trace your system and applications at runtime, and analyze collected events to detect suspicious behavioral patterns. It is delivered as a Docker image that monitors the OS and detects suspicious behavior based on a pre-defined set of behavioral patterns.
+## About Tracee
 
-Watch a quick video demo of Tracee: <br>
-<a href="https://youtu.be/9qxaOYto_5g"><img src="http://i3.ytimg.com/vi/9qxaOYto_5g/maxresdefault.jpg" width="400"></a>
+Tracee is a runtime security and observability tool that helps you understand how your system and applications behave.  
+It is using [eBPF technology](https://ebpf.io/what-is-ebpf/) to tap into your system and expose that information as events that you can consume.  
+Events range from factual system activity events to sophisticated security events that detect suspicious behavioral patterns.
 
-Check out the [Tracee video hub](https://info.aquasec.com/ebpf-runtime-security) for more.
-
-## Documentation
-
-The full documentation of Tracee is available at [https://aquasecurity.github.io/tracee/latest](https://aquasecurity.github.io/tracee/latest). You can use the version selector on top to view documentation for a specific version of Tracee.
+To learn more about Tracee, check out the [documentation](https://aquasecurity.github.io/tracee/).
 
 ## Quickstart
 
-Before you proceed, make sure you follow the [minimum requirements for running Tracee](https://aquasecurity.github.io/tracee/latest/install/prerequisites/).
+To quickly try Tracee use one of the following snippets. For a more complete installation guide, check out the [Installation section][installation].  
+Tracee should run on most common Linux distributions and kernels. For compatibility information see the [Prerequisites][prereqs] page.  Mac users, please read [this FAQ][macfaq].
 
-If running on __BTF enabled kernel__:
+### Using Docker
 
-```bash
-docker run --name tracee --rm --pid=host --cgroupns=host --privileged -v /tmp/tracee:/tmp/tracee -it aquasec/tracee:latest
+```shell
+docker run --name tracee -it --rm \
+  --pid=host --cgroupns=host --privileged \
+  -v /etc/os-release:/etc/os-release-host:ro \
+  -v /var/run:/var/run:ro \
+  aquasec/tracee:latest
 ```
 
-> Note: Running with BTF requires access to the kernel configuration file. Depending on the linux distribution it can be in either `/proc/config.gz` (which docker mounts by default) or `/boot/config-$(uname -r)` (which must be mounted explicitly).
+For a complete walkthrough please see the [Docker getting started guide][docker-guide].
 
-If running on __BTF disabled kernel__:
-```bash
-docker run --name tracee --rm --pid=host --cgroupns=host --privileged -v /tmp/tracee:/tmp/tracee -v /lib/modules/:/lib/modules/:ro -v /usr/src:/usr/src:ro -it aquasec/tracee:latest
+### On Kubernetes
+
+```shell
+helm repo add aqua https://aquasecurity.github.io/helm-charts/
+helm repo update
+helm install tracee aqua/tracee --namespace tracee --create-namespace
 ```
 
-> Note: You may need to change the volume mounts for the kernel headers based on your setup. See [Linux Headers](https://aquasecurity.github.io/tracee/install/headers.md) section for more info.
+```shell
+kubectl logs --follow --namespace tracee daemonset/tracee
+```
 
-This will run Tracee with default settings and start reporting detections to standard output.  
-In order to simulate a suspicious behavior, you can run `strace ls` in another terminal, which will trigger the "Anti-Debugging" signature, which is loaded by default.
+For a complete walkthrough please see the [Kubernetes getting started guide][kubernetes-guide].
 
-## Trace
+## Contributing
+  
+Join the community, and talk to us about any matter in the [GitHub Discussions](https://github.com/aquasecurity/tracee/discussions) or [Slack](https://slack.aquasec.com).  
+If you run into any trouble using Tracee or you would like to give use user feedback, please [create an issue.](https://github.com/aquasecurity/tracee/issues)
 
-In some cases, you might want to leverage Tracee's eBPF event collection capabilities directly, without involving the detection engine. This might be useful for debugging/troubleshooting/analysis/research/education. In this case you can run Tracee with the `trace` sub-command, which will start dumping raw data directly into standard output. There are many configurations and options available so you can control exactly what is being collected and how. see the Documentation or add the `--help` flag for more.
+Find more information on [contribution documentation](https://aquasecurity.github.io/tracee/latest/contributing/overview/).
 
-## Components
-
-Tracee is composed of the following sub-projects, which are hosted in the aquasecurity/tracee repository:
-- [Tracee-eBPF](tracee-ebpf) - Linux Tracing and Forensics using eBPF
-- [Tracee-Rules](tracee-rules) - Runtime Security Detection Engine
-
----
+## More about Aqua Security
 
 Tracee is an [Aqua Security](https://aquasec.com) open source project.  
-Learn about our open source work and portfolio [here](https://www.aquasec.com/products/open-source-projects/).  
-Contact us about any matter by opening a GitHub Discussion [here](https://github.com/aquasecurity/tracee/discussions).
+Learn about our open source work and portfolio [here](https://www.aquasec.com/products/open-source-projects/).

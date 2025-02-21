@@ -1,25 +1,32 @@
+#
+# On demand and on vXXX tag push: Deploy the latest documentatio
+#
 name: Deploy the latest documentation
 on:
-  push:
-    tags:
-      - "v*"
   workflow_dispatch:
     inputs:
-      tag:
-        required: false
+      ref:
+        description: The tag to be released, e.g. v0.0.1
+        required: true
 jobs:
   deploy:
     name: Deploy the latest documentation
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout main
-        uses: actions/checkout@v2
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
+          ref: ${{ github.event.inputs.ref }}
           fetch-depth: 0
           persist-credentials: true
-      - uses: actions/setup-python@v2
+      - name: Login to docker.io registry
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
         with:
-          python-version: 3.x
+          username: ${{ secrets.DOCKERHUB_USER }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
+        with:
+          python-version: 3.12.3
       - name: Install dependencies
         run: |
           pip install git+https://${GH_TOKEN}@github.com/squidfunk/mkdocs-material-insiders.git
@@ -33,8 +40,5 @@ jobs:
           git config user.email "github-actions@github.com"
       - name: Deploy the latest documents
         run: |
-          VERSION="${{ github.event.inputs.tag }}" 
-          if [ -z $VERSION ]; then
-            VERSION=$(echo ${{ github.ref }} | sed -e "s#refs/tags/##g")
-          fi
-          mike deploy --push --update-aliases $VERSION latest
+          VERSION="${{ github.event.inputs.ref }}"
+          mike deploy --push --update-aliases ${VERSION%.*} latest

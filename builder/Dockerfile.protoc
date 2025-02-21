@@ -1,0 +1,14 @@
+FROM golang:1.24.0
+
+ARG PROTOC_VERSION="29.0" # v5.29.0
+ARG PROTOC_ZIP="protoc-${PROTOC_VERSION}-linux-x86_64.zip"
+
+RUN apt update -y && apt install -y unzip 
+RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/${PROTOC_ZIP} && \
+	unzip ${PROTOC_ZIP} -d /usr/local
+
+RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@c72053a9062dd4bc86a75c21f5d8134136ccbf2e # v1.35.2
+RUN go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@acba4d3e9d537eb5adc09947ebc7cfb85ec774cc # protoc-gen-go-grpc v1.68.0
+RUN go install github.com/mitchellh/protoc-gen-go-json@49905733154f04e47d685de62c2cc2b72613b69e # master
+
+WORKDIR /tracee
