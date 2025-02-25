@@ -1,0 +1,58 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tracee-config
+  labels:
+    {{- include "tracee.labels" . | nindent 4 }}
+data:
+  {{- if .Values.configFile }}
+  config.yaml:
+    {{- toYaml .Values.configFile | nindent 4 }}
+  {{- else }}
+  config.yaml: |-
+    cache:
+        type: {{ .Values.config.cache.type }}
+        size: {{ .Values.config.cache.size }}
+    perf-buffer-size: {{ .Values.config.perfBufferSize }}
+    healthz: {{ .Values.config.healthz }}
+    metrics: {{ .Values.config.metrics }}
+    pprof: {{ .Values.config.pprof }}
+    pyroscope: {{ .Values.config.pyroscope }}
+    listen-addr: {{ .Values.config.listenAddr }}
+    {{- if .Values.config.installPath }}
+    install-path: {{ .Values.config.installPath }}
+    {{- end }}
+    {{- if .Values.config.signaturesDir }}
+    signatures-dir: {{ .Values.config.signaturesDir }}
+    {{- end }}
+    log:
+        level: {{ .Values.config.log.level }}
+    output:
+        {{ .Values.config.output.format }}:
+            files:
+                - stdout
+        options:
+            parse-arguments: {{ .Values.config.output.options.parseArguments }}
+            stack-addresses: {{ .Values.config.output.options.stackAddresses }}
+            exec-env: {{ .Values.config.output.options.execEnv }}
+            exec-hash: {{ .Values.config.output.options.execHash }}
+            sort-events: {{ .Values.config.output.options.sortEvents }}
+        {{- with .Values.config.output.webhook }}
+        webhook:
+            - {{ .name | default "webhook1" }}:
+                protocol: {{ .protocol | default "http" }}
+                host: {{ .host | default "localhost" }}
+                port: {{ .port | default "8080" }}
+                {{ if .timeout }}
+                timeout: {{ .timeout }}
+                {{- end }}
+                gotemplate: {{ .goTemplate }}
+                {{- if .contentType }}
+                content-type: {{ .contentType }}
+                {{- end }}
+        {{- end }}
+    {{- if .Values.config.blobPerfBufferSize }}
+    blob-perf-buffer-size: {{ .Values.config.blobPerfBufferSize}}
+    {{- end }}
+  {{- end }}
